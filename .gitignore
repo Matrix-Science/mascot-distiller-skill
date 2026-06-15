@@ -1,0 +1,32 @@
+# Matrix Science Mascot Distiller SDK — distributed separately, not part of the skill.
+# Colleagues should obtain the SDK from their Mascot Distiller installation
+# (usually <DISTILLER_INSTALL>\SDK\).
+SDK/
+
+# Shareable artefact — rebuild on demand from the skill contents.
+mascot-distiller-skill.zip
+
+# Windows artefacts
+nul
+Thumbs.db
+desktop.ini
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+
+# Claude Code project-local settings and stale skill copies — this repo
+# IS the distributable; don't commit a nested install.
+.claude/

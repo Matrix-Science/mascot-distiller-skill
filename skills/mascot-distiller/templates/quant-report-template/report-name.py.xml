@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<DistillerReport
+    majorVersion="1" minorVersion="0"
+    title="REPORT TITLE HERE"
+    grouping=""
+    xmlns="http://www.matrixscience.com/xmlns/schema/distiller_report_definition_1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.matrixscience.com/xmlns/schema/distiller_quantitation_2
+        distiller_report_definition_1.xsd">
+
+    <Description>One-sentence tooltip shown in the Distiller report menu.</Description>
+
+    <!-- Set each protocol your report can run against. Set to "false" for any
+         that don't apply (e.g. an MS1-only report should set reporter/multiplex
+         to "false" so Distiller hides it for iTRAQ/TMT projects). -->
+    <Supports
+        average="true"
+        precursor="true"
+        replicate="true"
+        reporter="true"
+        multiplex="true"/>
+
+    <Inputs>
+        <ReportConfiguration>
+            <!-- Output format. Add HTM/SVG/PNG options if your report supports them. -->
+            <Parameter name="exportFormat" label="Format" value="CSV"
+                       type="text" mapsTo="ExportFileType"/>
+        </ReportConfiguration>
+
+        <Wizard>
+            <WelcomeText>
+                Brief introduction shown on the first wizard page. Explain what
+                the report does and any prerequisites (e.g. "Requires a
+                quantitation method that defines at least one ratio").
+            </WelcomeText>
+
+            <!-- Add wizard pages here. Each wizard parameter becomes a row in
+                 the properties CSV with Identifier=parameter name, value in Input1.
+                 Example: -->
+            <!--
+            <Page title="Options">
+                <HelpText>Help text shown on this wizard page.</HelpText>
+                <Parameter name="myParamName" label="My setting" type="select">
+                    <Option value="opt_a" displayString="Option A" selected="true"/>
+                    <Option value="opt_b" displayString="Option B"/>
+                </Parameter>
+            </Page>
+            -->
+
+            <CompletionText>
+                Click 'Finish' to run the report.
+            </CompletionText>
+        </Wizard>
+    </Inputs>
+</DistillerReport>
