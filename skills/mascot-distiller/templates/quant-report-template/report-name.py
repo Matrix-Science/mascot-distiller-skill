@@ -1,10 +1,9 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-###############################################################################
-# REPORT-NAME-HERE
-#
-# Copyright YYYY Matrix Science Limited.  All Rights Reserved.
-###############################################################################
+##############################################################################
+# REPORT-NAME-HERE                                                           #
+##############################################################################
+# COPYRIGHT NOTICE                                                           #
+# Copyright 2019-2026 Matrix Science Limited  All Rights Reserved.           #
+##############################################################################
 """One-line description of what this report produces."""
 
 __version__ = "0.1.0"
