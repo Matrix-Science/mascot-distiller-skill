@@ -15,6 +15,8 @@ The skill itself is just markdown — `skills/mascot-distiller/SKILL.md` plus re
 - The two-file `.py` + `.py.xml` report pattern, with a ready-to-copy starter template
 - Visualisation recipes (Plotly embedding, XIC overlays, annotated MS2, heatmaps)
 - Pre-deploy checklists and batch/regression-testing guidance
+- The `.rov` project container — it's a ZIP, and knowing the stream layout gets you search parameters, peak-detection options and the quant method that msparser doesn't expose
+- **De novo sequencing from the command line** — including the non-obvious part: parameters live *inside the project*, and stale cached solutions get silently re-exported as if they were fresh
 
 ## Prerequisites
 
@@ -77,6 +79,8 @@ Once installed, just ask in plain language. Examples:
 - *"Add a wizard parameter to my report that lets the user pick a minimum protein score."*
 - *"Read the integrated XICs from this `.dat` file and plot them as an interactive Plotly HTML."*
 - *"Lint my report before I deploy it — check encoding, schema, logger, and hard-coded paths."*
+- *"Run Distiller de novo on this `.rov` at 10 ppm / 0.02 Da and tell me why my last run ignored the tolerances I set."*
+- *"What's actually inside this `.rov` — which database was searched, and with what peak detection options?"*
 
 ## Repo layout
 
@@ -93,9 +97,15 @@ skills/mascot-distiller/
     QUANT_PROTOCOL_HELPER.md        # MS1/MS2/Average dispatch helper
     CHECKLIST.md                    # pre-deploy and release checklists
     BATCH_TESTING.md                # regression testing / CI
+    PROCESSING_OPTIONS.md           # *.opt peak-detection schema versions
+    ROV_FILE_FORMAT.md              # .rov is a ZIP — stream layout
+    DE_NOVO.md                      # de novo sequencing from the command line
+    COMMAND_LINE.md                 # driving Distiller unattended
   templates/
     quant-report-template/          # recommended starting point for a new report
+    denovo-cli/                     # unattended de novo: seed, patch, run
     lint-report.sh                  # one-shot pre-deploy audit script
+    downgrade-opt-to-1.6.ps1        # processing-options downgrade helper
 ```
 
 The msparser SDK directory (`SDK/`) is gitignored — it is licensed software and is not redistributed here.

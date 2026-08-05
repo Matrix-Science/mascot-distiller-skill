@@ -1,11 +1,11 @@
 ---
 name: mascot-distiller
-description: Create and develop Mascot Distiller custom quantitative proteomics reports. Use when creating new reports, editing existing reports, or working with the msparser SDK for quantitation analysis in the Mascot Distiller report building workspace.
+description: Create and develop Mascot Distiller custom quantitative proteomics reports, and drive Distiller unattended. Use when creating or editing reports, working with the msparser SDK for quantitation analysis, running Distiller de novo sequencing from the command line, or working with .rov project files.
 ---
 
 # Mascot Distiller Report Development Skill
 
-Build custom quantitative proteomics reports for Mascot Distiller using the msparser SDK.
+Build custom quantitative proteomics reports for Mascot Distiller using the msparser SDK, and drive Distiller itself from the command line.
 
 ## Contents
 
@@ -22,8 +22,9 @@ Build custom quantitative proteomics reports for Mascot Distiller using the mspa
 11. [Quantitation Methods](#quantitation-methods)
 12. [Helper Modules](#helper-modules)
 13. [Deployment and Testing](#deployment-and-testing)
-14. [Critical Gotchas](#critical-gotchas)
-15. [Reference Files](#reference-files)
+14. [De novo sequencing and the batch CLI](#de-novo-sequencing-and-the-batch-cli)
+15. [Critical Gotchas](#critical-gotchas)
+16. [Reference Files](#reference-files)
 
 ---
 
@@ -655,6 +656,80 @@ Run these from `<WORKSPACE>` (resolved during [First-time setup](#first-time-set
 
 ---
 
+## De novo sequencing and the batch CLI
+
+Everything above is *post-search reporting*. Distiller can also be driven
+directly — `MascotDistiller.exe /batch ...` — to sequence spectra without a
+database, submit searches, and run reports unattended.
+
+### The one thing to know about de novo
+
+**De novo parameters are read from a copy stored inside the `.rov` project**,
+not from the preferences file and not from the command line. Editing
+`Distiller.rst` between runs has no effect, and the documented `/s <preferences>`
+switch is accepted and ignored — a deliberately malformed preferences file still
+produces normal output.
+
+Worse, once a project has de novo results Distiller caches them in
+`rover_data+N` ZIP members and a later run **re-exports the cache instead of
+recomputing**. The run exits 0, the file looks right, and the exported header
+shows your *new* tolerances over the *old* solutions.
+
+The sequence that works:
+
+```
+1. SEED   /denovo 1 over a short scan window   -> makes Distiller create rover_data
+                                                  (a fresh project has none)
+2. PATCH  rewrite <denovotagTab> in rover_data -> sets the real parameters
+          + delete cached rover_data+N members -> forces recomputation
+3. RUN    /denovo 0 over the whole project
+```
+
+```powershell
+python templates/denovo-cli/run_denovo.py --rov project.rov --out denovo.csv `
+    --seed-start 5 --seed-end 400 --frag-tol 0.02 --pep-tol 10
+```
+
+### Two parameter traps
+
+- **The stock 0.300 Da fragment tolerance is more than an order of magnitude too
+  loose for Orbitrap MS2.** Too many compositions fit each mass gap, so Distiller
+  emits `[YSP|VTF|TMD|SME|PFC|FEA|EDC|YAi|SFi|PHi|MCi]` where 0.02 Da gives
+  `[VA|Gi]`. Set the tolerance before judging the output.
+- **Adding variable modifications makes de novo worse.** A database search prunes
+  the mod space with the sequence; de novo has no such constraint. Add
+  `Phospho (ST)`/`Phospho (Y)` when the sample demands it, not as a hedge.
+
+### Reading the output
+
+The de novo CSV states its uncertainty rather than hiding it: lowercase `i`
+(Ile-or-Leu) and `q` (Lys-or-Gln), `[ABC]` for a known composition in unknown
+order, `[AB|CD]` for alternative compositions. Use the **`FullSequence`** column,
+not `Sequence` — the latter collapses gaps to `-`.
+
+Do not flatten that ambiguity silently. On a 2.4M-spectrum benchmark only 27.8%
+of Distiller's correct answers named a single sequence outright, so taking the
+first option and reporting it as *the* answer overstates the tool considerably.
+
+**The de novo score ranks solutions within one spectrum, not spectra against
+each other.** Measured across 2.4M spectra the wrong-answer rate by score
+quintile was flat (50.0 / 48.6 / 49.1 / 50.0 / 54.5%). Don't build a
+cross-dataset score cutoff on it, and don't draw a precision–coverage curve
+ranked by it and read the result as quality.
+
+Full detail — switches, output format, notation, failure modes, throughput:
+[references/DE_NOVO.md](references/DE_NOVO.md) and
+[references/COMMAND_LINE.md](references/COMMAND_LINE.md).
+
+### Comparing engines?
+
+For de novo work that isn't Distiller-specific — running other engines,
+joining results by scan number, isobaric-aware sequence comparison, mapping
+peptides to a proteome, FDR control — see the separate **de novo sequencing**
+skill. This skill covers the Distiller side only.
+
+---
+
 ## Critical Gotchas
 
 ### 1. Garbage collection - KEEP REFERENCES
@@ -833,6 +908,36 @@ reliable fallback. **Always confirm the component→run mapping on a real multif
 project**: every component should map to exactly one expected run, with no reuse and
 none dropped.
 
+### 16. A `.rov` can be a valid ZIP and still be unusable
+
+A project left half-written by a hard kill opens cleanly and is close to full
+size, but can be missing `mdro_proc_opts`. Distiller then does **no de novo work
+at all** — exit 0, no `rover_data` created, and a confusing `rover_data not
+present` two steps later. Size and ZIP validity both pass; check the member list:
+
+```python
+def rov_is_complete(path):
+    try:
+        with zipfile.ZipFile(path) as z:
+            names = set(z.namelist())
+    except (OSError, zipfile.BadZipFile):
+        return False
+    return {"mdro_pkl", "mdro_proc_opts"} <= names
+    # rover_data deliberately NOT required -- a fresh project has none yet
+```
+
+### 17. An output file existing is not evidence the stage finished
+
+A Distiller process killed mid-write — by a forced reboot, say — leaves a file
+that is megabytes long and still truncated, which sails past any size floor and
+is then read as though it were a whole result. **The exit code is the only
+reliable signal.** In a resumable batch, persist the exit code per stage and on
+restart delete any output whose stage is not recorded as having returned 0.
+
+Note also that exit 0 with *no* output file is a real outcome: it usually means
+Distiller decided there was nothing to do, which points at the project rather
+than at Distiller.
+
 ---
 
 ## Reference Files
@@ -850,9 +955,12 @@ none dropped.
 | [BATCH_TESTING.md](references/BATCH_TESTING.md) | MDXE-driven regression testing; fixture design; CI considerations |
 | [PROCESSING_OPTIONS.md](references/PROCESSING_OPTIONS.md) | `*.opt` (peak-detection) schema versions and `downgrade-opt-to-1.6.ps1` for sending files back to customers on older Distiller builds |
 | [ROV_FILE_FORMAT.md](references/ROV_FILE_FORMAT.md) | `.rov` is a ZIP container — stream layout, why msparser can't open it natively, the `open_rov_resfile()` extract-then-`createResfile()` pattern, where peak detection options + quant method + embedded `.dat` actually live |
+| [DE_NOVO.md](references/DE_NOVO.md) | Distiller de novo sequencing: why parameters live in the `.rov`, the seed→patch→run sequence, `<denovotagTab>` attributes, output CSV format, the ambiguity notation, what the score does and does not tell you, crash backoff |
+| [COMMAND_LINE.md](references/COMMAND_LINE.md) | Driving Distiller unattended: verified `/batch` switches, exit codes, `/submitSearch` vs HTTP submission to `nph-mascot.exe`, MGF export for third-party tools, resumable-batch rules |
 
 **Templates** (in `templates/` — copy into `<WORKSPACE>/dev-reports/<your-name>/`):
 - `quant-report-template/` — recommended starting point with banner, `__version__`, logger GC, standard property extraction
+- `denovo-cli/` — `run_denovo.py` + `patch_rov_denovo.py`: unattended de novo with parameters that actually take effect (plain Python, no msparser needed)
 - `lint-report.sh` — one-shot pre-deploy audit; copy into `<WORKSPACE>/scripts/`
 - `downgrade-opt-to-1.6.ps1` — convert schema 1.7+ processing-options files to 1.6 (see [PROCESSING_OPTIONS.md](references/PROCESSING_OPTIONS.md))
 

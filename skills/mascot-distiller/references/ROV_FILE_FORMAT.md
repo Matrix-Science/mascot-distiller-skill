@@ -24,7 +24,8 @@ Inside the ZIP you'll typically see:
 | `mdro_search_status+N` (N>=1) | binary | The actual Mascot **`.dat` results file** in MIME multipart format. Use msparser's `ms_mascotresfilebase.createResfile()` to read it. |
 | `mdro_pkl` | binary | Peak list (typically the largest stream by far). |
 | `mdro_project_<UUID>` | XML | Project metadata: Distiller version (`mdroVersion`), experiment type, the full stream list. |
-| `rover_data`, `rover_data+N` | XML / binary | Distiller's main project XML (`<distillerProject>`) plus segment indices. Carries the URL-encoded quantitation method and a snapshot of the relevant `mascot.dat` databases section. |
+| `rover_data` | XML | Distiller's main project XML (`<distillerProject>`). Carries the URL-encoded quantitation method, a snapshot of the relevant `mascot.dat` databases section, and the project's own copy of `<denovotagTab>` — the de novo parameters. **Absent from a freshly created project**; Distiller writes it the first time it does de novo work. |
+| `rover_data+N` (N>=1) | binary | Segment payloads, including **cached de novo solutions**, referenced from `rover_data` by `<DenovoResult Segment="N" />`. See [the caching trap](#the-de-novo-caching-trap). |
 
 ## msparser cannot open a `.rov` natively
 
@@ -141,6 +142,39 @@ for node in root.iter(f"{NS}MascotImportOptions"):
 Note the default namespace on `rover_data` — `iter()` with a bare tag
 name (without the `{ns}` prefix) returns nothing.
 
+## Pattern: read (or set) the de novo parameters
+
+`rover_data` also carries the project's own `<denovotagTab>` block. **This is
+the copy Distiller's de novo engine actually uses** — not the live preferences
+file, and not anything passed on the command line.
+
+```python
+import re, zipfile
+
+with zipfile.ZipFile(rov_path) as z:
+    xml = z.read("rover_data").decode("utf-8", errors="surrogateescape")
+
+block = xml[xml.find("<denovotagTab"):xml.find("</denovotagTab>")]
+print(re.search(r'Instrument="([^"]*)"', block).group(1))
+
+# Tolerances are base64 little-endian IEEE-754 doubles, not decimal text
+import base64, struct
+frag = struct.unpack("<d", base64.b64decode(
+    re.search(r'FragTol="([^"]*)"', block).group(1)))[0]
+```
+
+Writing it back is how you change de novo parameters at all. Full workflow and
+a ready-made patcher: [DE_NOVO.md](DE_NOVO.md).
+
+### The de novo caching trap
+
+Once a project has de novo results, they live in `rover_data+N` members
+referenced by `<DenovoResult Segment="N" />`. A later `/denovo` run
+**re-exports the cache instead of recomputing** — and the exported header shows
+the *new* parameters over the *old* solutions. Exit code 0, plausible file,
+wrong answers. Any code that rewrites `<denovotagTab>` must also strip those
+elements and drop the corresponding ZIP members.
+
 ## All-in-one extractor
 
 This skill ships an `_extract_rov_params.py` script in the report
@@ -168,7 +202,12 @@ the `mascot.dat` databases snapshot.
 3. **`mdro_search_status` (no suffix) is the small XML manifest, not
    the `.dat`.** The `.dat` lives in `mdro_search_status+N` for `N>=1`.
    The bare-name stream contains only the search-task pointer.
-4. **The `.dat` inside the `.rov` is full-fidelity** — every Mascot
+4. **A valid ZIP of the right size can still be an unusable project.** One left
+   half-written by a hard kill opens cleanly but can be missing
+   `mdro_proc_opts`, and Distiller then silently does no work on it. Check
+   membership rather than size: `{"mdro_pkl", "mdro_proc_opts"} <= set(z.namelist())`.
+   Don't require `rover_data` in that test — a fresh project legitimately has none.
+5. **The `.dat` inside the `.rov` is full-fidelity** — every Mascot
    search parameter and modification is there, even though some Mascot
    server admins delete the `<mascot>/data/<date>/` files after a few
    weeks. This is sometimes the only surviving copy.
