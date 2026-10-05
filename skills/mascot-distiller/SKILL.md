@@ -1,6 +1,6 @@
 ---
 name: mascot-distiller
-description: Create and develop Mascot Distiller custom quantitative proteomics reports, and drive Distiller unattended. Use when creating or editing reports, working with the msparser SDK for quantitation analysis, running Distiller de novo sequencing from the command line, or working with .rov project files.
+description: Create and develop Mascot Distiller custom quantitative proteomics reports, and drive Distiller unattended. Use when creating or editing reports, working with the msparser SDK for quantitation analysis, running Distiller de novo sequencing from the command line, or working with .rov project files. Also covers setting up MS1 (label-free Average/Replicate, SILAC) and MS2 (TMT/iTRAQ) quantitation in Mascot Daemon tasks that produce Distiller projects, and enabling/reading Distiller logs (Distiller.log, Daemon *.rov.import.log, -logfile).
 ---
 
 # Mascot Distiller Report Development Skill
@@ -140,7 +140,7 @@ Three starting points, in order of preference:
 2. **Workspace template** — `<WORKSPACE>/dev-reports/templates/template-simple.py` for a more bare-bones starting point.
 3. **Existing report** — `<WORKSPACE>/reports/top-3.py` if you want a complete worked example to crib from.
 
-**Debugging what Distiller passes in**: you don't need a dedicated report to see the properties CSV. Distiller logs the full properties file when logging verbosity is turned up — enable it in Distiller's logging options and the file contents appear in the Distiller log. That's the shortest path to seeing exactly what wizard inputs and project metadata your report will receive.
+**Debugging what Distiller passes in**: you don't need a dedicated report to see the properties CSV. Distiller logs the full properties file when logging verbosity is turned up — enable it in Distiller's logging options and the file contents appear in the Distiller log (setup, file locations and how to read the log: [references/LOGGING.md](references/LOGGING.md)). That's the shortest path to seeing exactly what wizard inputs and project metadata your report will receive.
 
 ### Step 3: Edit the XML (defines wizard UI)
 
@@ -286,9 +286,9 @@ if __name__ == "__main__":
 ### Supported quantitation protocols
 
 Set each to `"true"` or `"false"` in the `<Supports>` element:
-- `average` - Isotope labeling (SILAC, 15N) - MS1
-- `precursor` - Label-free precursor intensity - MS1
-- `replicate` - Replicate ratios
+- `average` - Label-free, top-N peptides per protein, single file (e.g. `Average [MD]`) - MS1
+- `precursor` - Isotope labelling: SILAC, 15N, dimethyl (e.g. `SILAC K+6 R+6 [MD]`) - MS1
+- `replicate` - Label-free ratios across runs, one component per file (e.g. `Label-free [MD]`) - MS1
 - `reporter` - Isobaric tags (iTRAQ, TMT) - MS2
 - `multiplex` - Multiplexed protocols
 
@@ -577,9 +577,9 @@ WriteReports.OutputProgress('Processing proteins', current, total)
 
 | Protocol | Type | API Class | Description |
 |----------|------|-----------|-------------|
-| `average` | MS1 | `ms_ms1quantitation` | Isotope labeling (SILAC, 15N) |
-| `precursor` | MS1 | `ms_ms1quantitation` | Label-free precursor intensity |
-| `replicate` | MS1 | `ms_ms1quantitation` | Replicate ratios |
+| `average` | MS1 | `ms_ms1quantitation` | Label-free top-N abundance, single file (`Average [MD]`) |
+| `precursor` | MS1 | `ms_ms1quantitation` | Isotope labelling: SILAC, 15N, dimethyl |
+| `replicate` | MS1 | `ms_ms1quantitation` | Label-free ratios across runs (`Label-free [MD]`) |
 | `reporter` | MS2 | `ms_ms2quantitation` | Isobaric tags (iTRAQ, TMT) |
 | `multiplex` | MS2 | `ms_ms2quantitation` | Multiplexed protocols |
 
@@ -594,6 +594,10 @@ isAverage = False
 if isMS1:
     isAverage = qMethod.getProtocol().getAverage() is not None
 ```
+
+### Producing quantitated projects with Mascot Daemon
+
+Most `.rov` files a report meets in production come from Mascot Daemon batch tasks (Distiller as the import filter). Daemon can quantitate **reporter/multiplex (TMT, iTRAQ)**, **average** and **precursor** methods file-by-file, but **not replicate** label-free, which needs a multi-file project. Worked `.par` + task examples for TMT (MS2), `Average [MD]` and `Label-free [MD]` (MS1), plus the filter-option fields that must be set, are in [references/DAEMON_QUANTITATION.md](references/DAEMON_QUANTITATION.md).
 
 ---
 
@@ -954,6 +958,8 @@ than at Distiller.
 | [CHECKLIST.md](references/CHECKLIST.md) | Pre-deploy and release checklists (encoding, schema, logger, etc.) |
 | [BATCH_TESTING.md](references/BATCH_TESTING.md) | MDXE-driven regression testing; fixture design; CI considerations |
 | [PROCESSING_OPTIONS.md](references/PROCESSING_OPTIONS.md) | `*.opt` (peak-detection) schema versions and `downgrade-opt-to-1.6.ps1` for sending files back to customers on older Distiller builds |
+| [DAEMON_QUANTITATION.md](references/DAEMON_QUANTITATION.md) | MS1/MS2 quantitation through Mascot Daemon: TMT, `Average [MD]` and `Label-free [MD]` parameter sets, Distiller filter-option fields, what Daemon can and can't quantitate, replicate multi-file workflow |
+| [LOGGING.md](references/LOGGING.md) | Distiller logging monitor: Log Preferences, level bitmask, `Distiller.log` / Daemon `*.rov.import.log` / `-logfile` locations, line format + pandas parser, benign vs real errors, credential redaction, logging from a report |
 | [ROV_FILE_FORMAT.md](references/ROV_FILE_FORMAT.md) | `.rov` is a ZIP container — stream layout, why msparser can't open it natively, the `open_rov_resfile()` extract-then-`createResfile()` pattern, where peak detection options + quant method + embedded `.dat` actually live |
 | [DE_NOVO.md](references/DE_NOVO.md) | Distiller de novo sequencing: why parameters live in the `.rov`, the seed→patch→run sequence, `<denovotagTab>` attributes, output CSV format, the ambiguity notation, what the score does and does not tell you, crash backoff |
 | [COMMAND_LINE.md](references/COMMAND_LINE.md) | Driving Distiller unattended: verified `/batch` switches, exit codes, `/submitSearch` vs HTTP submission to `nph-mascot.exe`, MGF export for third-party tools, resumable-batch rules |

@@ -101,6 +101,8 @@ skills/mascot-distiller/
     ROV_FILE_FORMAT.md              # .rov is a ZIP — stream layout
     DE_NOVO.md                      # de novo sequencing from the command line
     COMMAND_LINE.md                 # driving Distiller unattended
+    DAEMON_QUANTITATION.md          # MS1/MS2 (TMT, label-free) quantitation via Mascot Daemon
+    LOGGING.md                      # Distiller logging: setup, log locations, reading logs
   templates/
     quant-report-template/          # recommended starting point for a new report
     denovo-cli/                     # unattended de novo: seed, patch, run
