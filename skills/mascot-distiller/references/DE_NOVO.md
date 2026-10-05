@@ -55,7 +55,7 @@ own directory.
 | `/denovoout <path.csv>` | Where to write the solutions CSV. |
 | `/outputProgress` | Emit progress lines to the log — worth having on a multi-hour run. |
 | `/e <path.txt>` | Error/status file. Written even on success (often empty). |
-| `/logfile <path>` / `/loglevel <0-4>` | Log destination and verbosity; `3` is a useful default. |
+| `/logfile <path>` / `/loglevel <mask>` | Log destination and verbosity. `loglevel` is a bitmask (`1` Error + `2` Warning + `4` Information …); `3` (Error + Warning) is a useful default, `7` adds progress-level Information. See [LOGGING.md](LOGGING.md). |
 | `<project.rov>` | The project, given last as a positional argument. |
 
 ```powershell

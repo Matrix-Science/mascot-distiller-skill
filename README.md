@@ -1,6 +1,6 @@
 # Mascot Distiller Skill
 
-**Version:** 1.0.0 &nbsp;|&nbsp; **License:** Apache-2.0
+**Version:** 1.1.0 &nbsp;|&nbsp; **License:** Apache-2.0
 
 An Agent Skill that teaches AI coding assistants how to build **custom Mascot Distiller reports** — Python scripts that Distiller runs after a search to produce quantitative proteomics output (CSV, HTML, SVG, PNG).
 
@@ -100,7 +100,7 @@ skills/mascot-distiller/
     PROCESSING_OPTIONS.md           # *.opt peak-detection schema versions
     ROV_FILE_FORMAT.md              # .rov is a ZIP — stream layout
     DE_NOVO.md                      # de novo sequencing from the command line
-    COMMAND_LINE.md                 # driving Distiller unattended
+    COMMAND_LINE.md                 # driving Distiller from the CLI: 2.9.240+ version gate, switches, headless .rov
     DAEMON_QUANTITATION.md          # MS1/MS2 (TMT, label-free) quantitation via Mascot Daemon
     LOGGING.md                      # Distiller logging: setup, log locations, reading logs
   templates/

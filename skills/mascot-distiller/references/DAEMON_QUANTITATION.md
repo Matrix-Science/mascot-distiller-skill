@@ -157,7 +157,7 @@ MascotDistiller.exe "<cache dir>\<hash>___<raw>.-1.rov" -batch ^
 `-quantreport` takes a file name in the reports directory or a full path.
 The full command-line option set (`-quantreport`, `-quantout`) needs
 **Distiller 2.9.240 or later**, so check `MascotDistiller.exe`'s file version
-first. On older builds,
+first (see [COMMAND_LINE.md](COMMAND_LINE.md#check-the-version-first)). On older builds,
 open the `.rov` in Distiller Workstation (Daemon's status tab hyperlinks it)
 and run the report from the wizard.
 

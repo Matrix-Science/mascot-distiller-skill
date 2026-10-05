@@ -45,7 +45,7 @@ The settings are stored per user in `%APPDATA%\Matrix Science\Mascot Distiller\D
             DistillerLogLevels="3" MDROLogLevels="3" MSParserLogLevels="3" MSQuantLibLogLevels="3" />
 ```
 
-The `*LogLevels` values are the same **bitmask** that the Distiller help documents for the command-line `-loglevel` switch (a sum of the bits below). [COMMAND_LINE.md](COMMAND_LINE.md) lists `/loglevel <0-4>`. Under the bitmask reading its recommended `3` means Error + Warning, and `7` adds Information:
+The `*LogLevels` values are the same **bitmask** as the command-line `-loglevel` switch (verified on 2.9.242: `-loglevel 4` logs Information *without* errors, and `7` logs both):
 
 | Bit | Level |
 |-----|-------|
@@ -82,7 +82,7 @@ MascotDistiller.exe sample.rov -batch -quantitate -logfile run.log -loglevel 7 -
 
 `MascotDistiller.exe` returns before processing finishes. Tail the
 `-logfile` until the final `Done!` line appears (see §4), or use
-`-showConsole 2` to attach a console that waits for a keypress (2.9.240+).
+`-showConsole 2` (see [COMMAND_LINE.md](COMMAND_LINE.md)).
 
 ---
 

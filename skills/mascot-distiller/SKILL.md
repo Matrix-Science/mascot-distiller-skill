@@ -658,6 +658,33 @@ Run these from `<WORKSPACE>` (resolved during [First-time setup](#first-time-set
 3. Go to **Analysis -> Reports -> [grouping] -> [title]**
 4. Run through wizard and verify output
 
+### Headless command-line run (version-gated: Distiller 2.9.240+)
+
+Distiller 2.9.240 and above (the 3.0 line) can run a report against a `.rov`
+straight from the command line — no GUI, no wizard — via `-quantreport`:
+
+```
+MascotDistiller.exe <project.rov> -batch -quantreport my-report -quantout out.htm
+```
+
+This is a lightweight headless smoke test, the CLI equivalent of running the
+wizard. **The full command-line processing option set only exists on 2.9.240+**,
+so check the version before relying on it (older builds accept a much smaller
+subset). These options are part of base Distiller and do **not** require the
+separately-licensed Distiller SDK — only the relevant toolbox (Quantitation for
+reports/quant, Daemon for peak picking/search submission).
+
+Preferred version check (reads the file version without launching Distiller):
+
+```powershell
+$exe   = Join-Path $DistillerInstall 'MascotDistiller.exe'
+$clean = ((Get-Item $exe).VersionInfo.ProductVersion -replace '[^0-9.].*$','').Trim('.')
+if ([version]$clean -ge [version]'2.9.240') { 'command-line processing options available' }
+```
+
+Full argument reference, the `-version` gotcha, toolbox requirements, and the
+DIA precursor overrides are in [references/COMMAND_LINE.md](references/COMMAND_LINE.md).
+
 ---
 
 ## De novo sequencing and the batch CLI
@@ -962,7 +989,7 @@ than at Distiller.
 | [LOGGING.md](references/LOGGING.md) | Distiller logging monitor: Log Preferences, level bitmask, `Distiller.log` / Daemon `*.rov.import.log` / `-logfile` locations, line format + pandas parser, benign vs real errors, credential redaction, logging from a report |
 | [ROV_FILE_FORMAT.md](references/ROV_FILE_FORMAT.md) | `.rov` is a ZIP container — stream layout, why msparser can't open it natively, the `open_rov_resfile()` extract-then-`createResfile()` pattern, where peak detection options + quant method + embedded `.dat` actually live |
 | [DE_NOVO.md](references/DE_NOVO.md) | Distiller de novo sequencing: why parameters live in the `.rov`, the seed→patch→run sequence, `<denovotagTab>` attributes, output CSV format, the ambiguity notation, what the score does and does not tell you, crash backoff |
-| [COMMAND_LINE.md](references/COMMAND_LINE.md) | Driving Distiller unattended: verified `/batch` switches, exit codes, `/submitSearch` vs HTTP submission to `nph-mascot.exe`, MGF export for third-party tools, resumable-batch rules |
+| [COMMAND_LINE.md](references/COMMAND_LINE.md) | Driving Distiller from the command line: 2.9.240+ version gate, verified and full switch reference (`-quantreport`, `-loglevel` bitmask), exit codes, headless `.rov` creation (COM + stream registration), DIA overrides, `/submitSearch` vs HTTP submission to `nph-mascot.exe`, MGF export for third-party tools, resumable-batch rules |
 
 **Templates** (in `templates/` — copy into `<WORKSPACE>/dev-reports/<your-name>/`):
 - `quant-report-template/` — recommended starting point with banner, `__version__`, logger GC, standard property extraction
