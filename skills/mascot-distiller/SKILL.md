@@ -1,6 +1,6 @@
 ---
 name: mascot-distiller
-description: Create and develop Mascot Distiller custom quantitative proteomics reports, and drive Distiller unattended. Use when creating or editing reports, working with the msparser SDK for quantitation analysis, running Distiller de novo sequencing from the command line, or working with .rov project files. Also covers setting up MS1 (label-free Average/Replicate, SILAC) and MS2 (TMT/iTRAQ) quantitation in Mascot Daemon tasks that produce Distiller projects, and enabling/reading Distiller logs (Distiller.log, Daemon *.rov.import.log, -logfile).
+description: Create and develop Mascot Distiller custom quantitative proteomics reports, and drive Distiller unattended from the command line. Use when creating or editing reports, working with the msparser SDK for quantitation analysis, or working with .rov project files. Also use whenever running MascotDistiller.exe from a script or in batch mode (-batch, -rawFile, -runPeakPicking, -submitSearch, -quantitate, -quantreport, -multifileDirectory, -denovo, -e, -logfile): creating and peak-picking projects headlessly without the SDK, searching or re-quantitating them, building multi-file masters, exporting quant results, extracting peak lists from a .rov, de novo sequencing, or testing a Distiller build. Also covers setting up MS1 (label-free Average/Replicate, SILAC) and MS2 (TMT/iTRAQ) quantitation in Mascot Daemon tasks that produce Distiller projects, and enabling/reading Distiller logs (Distiller.log, Daemon *.rov.import.log, -logfile).
 ---
 
 # Mascot Distiller Report Development Skill
@@ -664,11 +664,13 @@ Distiller 2.9.240 and above (the 3.0 line) can run a report against a `.rov`
 straight from the command line — no GUI, no wizard — via `-quantreport`:
 
 ```
-MascotDistiller.exe <project.rov> -batch -quantreport my-report -quantout out.htm
+MascotDistiller.exe -batch -quantitate -quantreport my-report -quantout C:\work\out.htm C:\work\project.rov
 ```
 
 This is a lightweight headless smoke test, the CLI equivalent of running the
-wizard. **The full command-line processing option set only exists on 2.9.240+**,
+wizard. With no wizard, **every parameter takes its XML default**
+(`selected="true"`). To run with other values, copy the report pair out of
+`reports/`, change the default in the copy, and pass the copy's full path. **The full command-line processing option set only exists on 2.9.240+**,
 so check the version before relying on it (older builds accept a much smaller
 subset). These options are part of base Distiller and do **not** require the
 separately-licensed Distiller SDK — only the relevant toolbox (Quantitation for
@@ -682,22 +684,49 @@ $clean = ((Get-Item $exe).VersionInfo.ProductVersion -replace '[^0-9.].*$','').T
 if ([version]$clean -ge [version]'2.9.240') { 'command-line processing options available' }
 ```
 
-Full argument reference, the `-version` gotcha, toolbox requirements, and the
-DIA precursor overrides are in [references/COMMAND_LINE.md](references/COMMAND_LINE.md).
+**Rules that each cost a past session an hour or more** (details and evidence in
+[references/COMMAND_LINE.md](references/COMMAND_LINE.md)):
+
+- **Write switches as `-batch`, not `/batch`.** Git Bash turns `/batch` into a
+  path and Distiller exits silently.
+- **Project path last, every path absolute, one instance at a time.** Exit
+  `0xE0434352` within a second means a relative path (Distiller runs from its
+  install directory) or another Distiller instance already running.
+- **`-rawFile` does create projects**, with no SDK needed (the Daemon Toolbox
+  licence covers `-runPeakPicking` and `-submitSearch`):
+  `-batch -rawFile <raw> -rawFileType <n> -optFile <opt> -runPeakPicking
+  [-submitSearch <par>] <new.rov>`. It needs `-rawFileType`; without it you get
+  `Unable to open MDRO project file`. `-rstExperimentType 2` is DIA (1 = DDA).
+  `.opt` presets live in
+  `C:\ProgramData\Matrix Science\Mascot Distiller\processing options\`.
+- **Don't trust exit code 0 on its own.** A crashed Mascot search, a report
+  writing XLSX into `out.csv`, and "nothing to do" all exit 0. Check the `-e`
+  file, the log and the output.
+- **An idle Distiller during a long search is not hung.** About 0% CPU and an open
+  port-80 connection is normal; don't kill it.
+- **`-submitSearch` `.par` files:** comma-separated `IT_MODS` (not `@`), and one
+  comma-separated `DB=` line.
+- If a Distiller MCP tool fails (e.g. `CoInitialize has not been called`), drive
+  the command line directly instead.
+
+Full argument reference (checked against `-?` output), exit codes, the
+`-version` gotcha, toolbox requirements, peak lists from a `.rov` without the
+SDK, and the DIA precursor overrides are in
+[references/COMMAND_LINE.md](references/COMMAND_LINE.md).
 
 ---
 
 ## De novo sequencing and the batch CLI
 
 Everything above is *post-search reporting*. Distiller can also be driven
-directly — `MascotDistiller.exe /batch ...` — to sequence spectra without a
+directly — `MascotDistiller.exe -batch ...` — to sequence spectra without a
 database, submit searches, and run reports unattended.
 
 ### The one thing to know about de novo
 
 **De novo parameters are read from a copy stored inside the `.rov` project**,
 not from the preferences file and not from the command line. Editing
-`Distiller.rst` between runs has no effect, and the documented `/s <preferences>`
+`Distiller.rst` between runs has no effect, and the documented `-s <preferences>`
 switch is accepted and ignored — a deliberately malformed preferences file still
 produces normal output.
 
@@ -709,11 +738,11 @@ shows your *new* tolerances over the *old* solutions.
 The sequence that works:
 
 ```
-1. SEED   /denovo 1 over a short scan window   -> makes Distiller create rover_data
+1. SEED   -denovo 1 over a short scan window   -> makes Distiller create rover_data
                                                   (a fresh project has none)
 2. PATCH  rewrite <denovotagTab> in rover_data -> sets the real parameters
           + delete cached rover_data+N members -> forces recomputation
-3. RUN    /denovo 0 over the whole project
+3. RUN    -denovo 0 over the whole project
 ```
 
 ```powershell
@@ -993,7 +1022,7 @@ than at Distiller.
 | [LOGGING.md](references/LOGGING.md) | Distiller logging monitor: Log Preferences, level bitmask, `Distiller.log` / Daemon `*.rov.import.log` / `-logfile` locations, line format + pandas parser, benign vs real errors, credential redaction, logging from a report |
 | [ROV_FILE_FORMAT.md](references/ROV_FILE_FORMAT.md) | `.rov` is a ZIP container — stream layout, why msparser can't open it natively, the `open_rov_resfile()` extract-then-`createResfile()` pattern, where peak detection options + quant method + embedded `.dat` actually live |
 | [DE_NOVO.md](references/DE_NOVO.md) | Distiller de novo sequencing: why parameters live in the `.rov`, the seed→patch→run sequence, `<denovotagTab>` attributes, output CSV format, the ambiguity notation, what the score does and does not tell you, crash backoff |
-| [COMMAND_LINE.md](references/COMMAND_LINE.md) | Driving Distiller from the command line: 2.9.240+ version gate, verified and full switch reference (`-quantreport`, `-loglevel` bitmask), exit codes, headless `.rov` creation (COM + stream registration), DIA overrides, `/submitSearch` vs HTTP submission to `nph-mascot.exe`, MGF export for third-party tools, resumable-batch rules |
+| [COMMAND_LINE.md](references/COMMAND_LINE.md) | Driving Distiller from the command line: 2.9.240+ version gate, verified and full switch reference (`-quantreport`, `-loglevel` bitmask), exit codes, headless `.rov` creation (COM + stream registration), DIA overrides, `-submitSearch` vs HTTP submission to `nph-mascot.exe`, MGF export for third-party tools, resumable-batch rules |
 
 **Templates** (in `templates/` — copy into `<WORKSPACE>/dev-reports/<your-name>/`):
 - `quant-report-template/` — recommended starting point with banner, `__version__`, logger GC, standard property extraction

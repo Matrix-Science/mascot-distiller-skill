@@ -30,7 +30,7 @@ Usage:
 See references/DE_NOVO.md for the full workflow and failure modes.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 import argparse
 import base64
@@ -140,7 +140,7 @@ def patch_rov(rov: Path, frag_tol: float = 0.02, pep_tol: float = 10.0,
 
     # Purge cached de novo solutions. Distiller stores them in separate zip
     # members named "rover_data+N", referenced from the project XML by
-    # <DenovoResult Segment="N" />. If they survive, /denovo simply re-exports
+    # <DenovoResult Segment="N" />. If they survive, -denovo simply re-exports
     # the old results and silently ignores the new parameters -- the run looks
     # like it succeeded and the exported header even shows the new tolerances.
     dropped = []
@@ -197,11 +197,21 @@ def main():
                     help="repeatable; default Oxidation (M). Phospho datasets "
                          "need Phospho (ST) and Phospho (Y) here or de novo "
                          "cannot place the modification at all.")
+    ap.add_argument("--no-fixed-mods", action="store_true",
+                    help="clear the fixed mods (overrides the default and any "
+                         "--fixed-mod)")
+    ap.add_argument("--no-var-mods", action="store_true",
+                    help="clear the variable mods (overrides the default and "
+                         "any --var-mod)")
     ap.add_argument("--no-backup", action="store_true")
     ap.add_argument("--keep-results", action="store_true",
                     help="do not purge cached de novo solutions (rarely what "
                          "you want -- see the note in patch_rov)")
     args = ap.parse_args()
+    if args.no_fixed_mods:
+        args.fixed_mod = []
+    if args.no_var_mods:
+        args.var_mod = []
 
     patch_rov(args.rov, args.frag_tol, args.pep_tol, args.instrument,
               args.enzyme, args.solutions, args.fixed_mod, args.var_mod,

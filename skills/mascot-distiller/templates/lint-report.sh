@@ -73,16 +73,17 @@ else
 fi
 
 # 5. Module-level logger + GC-prevention line
-if grep -qE "^[[:space:]]*mylogger_? *= *msparser\.ms_stdout_logger" "$PY"; then
-    pass "module-level logger present"
+# Any variable name will do; it must be assigned at module level (no indent).
+LOGGER=$(grep -oE "^[A-Za-z_][A-Za-z0-9_]* *= *msparser\.ms_stdout_logger" "$PY" | head -1 | sed -E 's/ *=.*//')
+if [[ -n "$LOGGER" ]]; then
+    pass "module-level logger present ($LOGGER)"
+    if grep -qE "${LOGGER}\.setColsToOutput\(1\)" "$PY"; then
+        pass "logger GC-prevention line present"
+    else
+        fail "missing '${LOGGER}.setColsToOutput(1)' at end of main() — see gotcha #1"
+    fi
 else
-    fail "no module-level 'mylogger_ = msparser.ms_stdout_logger()' — see gotcha #1"
-fi
-
-if grep -qE "setColsToOutput\(1\)" "$PY"; then
-    pass "logger GC-prevention line present"
-else
-    fail "missing 'mylogger_.setColsToOutput(1)' at end of main() — see gotcha #1"
+    fail "no module-level '<name> = msparser.ms_stdout_logger()' — see gotcha #1"
 fi
 
 # 6. No hard-coded user-specific paths
@@ -138,6 +139,8 @@ else
 fi
 
 echo ""
+echo "NOTE: lint passing is not a test. Run the report in Distiller (GUI or"
+echo "      -quantreport) on a real .rov before release — see SKILL.md gotcha #6."
 if [[ $FAILS -eq 0 ]]; then
     echo "Summary: OK — ${WARNS} warning(s)"
     exit 0

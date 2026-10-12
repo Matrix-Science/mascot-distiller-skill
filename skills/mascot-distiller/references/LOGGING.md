@@ -183,7 +183,9 @@ Done!                                                  <- finished
 
 | Message | Meaning |
 |---------|---------|
-| `Fatal COM Exception 'Unable to open MDRO project file. (Open failed: The system cannot find the path specified.)'` | The `.rov` path doesn't exist. The command line opens the project before doing anything else (so `-rawFile` can't create a new project from the command line) |
+| `Fatal COM Exception 'Unable to open MDRO project file. (Open failed: The system cannot find the path specified.)'` | The `.rov` path doesn't exist. If you were creating a project with `-rawFile`, you left out `-rawFileType` or put the project path before the switches; see [COMMAND_LINE.md](COMMAND_LINE.md#creating-a-rov-headlessly) |
+| `NullReferenceException` in the `-e` file, exit code `154`; the log has an `LVL_ERROR` line `Cannot find raw file ... or Project directory` | The project's raw files have moved. Put them back, or point a directory junction at their new home |
+| `Search Crashed` (`error=-1`) in the log and `-e` file, but exit code 0 | Mascot Server killed the search. The `.rov` has no `<resultsFile>`; rerun the file from scratch |
 | `Failed to load subproject '<...>.files\<hash>___<raw>...'` | A multi-file master can't find its sub-projects. They were moved, renamed or deleted |
 | `Automatically cancelled request made to load replicate data from a memory efficient multifile subproject` | Replicate data only exists on the master project. Open or report on the master, not the sub-project |
 | `Call to QuantlibProject::setExistingResultsDetails() ignored for subproject: N for replicate protocol` | Same cause, seen from the quantitation library |

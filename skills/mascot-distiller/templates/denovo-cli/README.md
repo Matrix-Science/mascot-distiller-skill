@@ -16,7 +16,7 @@ Plain Python 3.8+ — no msparser, no Distiller SDK. Both scripts only need
 De novo parameters are **not** read from the preferences file at run time and
 **not** taken from the command line. They come from a copy stored inside the
 `.rov` project. Editing `Distiller.rst` changes nothing, and the documented
-`/s <preferences>` switch is accepted and ignored.
+`-s <preferences>` switch is accepted and ignored.
 
 Worse, once a project has de novo results Distiller caches them and a later run
 **re-exports the cache** — exit 0, plausible output, and a header showing your
@@ -39,6 +39,20 @@ python run_denovo.py --rov project.rov --out denovo.csv `
     --frag-tol 0.02 --pep-tol 10 --instrument ESI-TRAP `
     --fixed-mod "Carbamidomethyl (C)" --var-mod "Oxidation (M)"
 ```
+
+`--rov`, `--out` and `--manifest` are made absolute before anything reaches
+Distiller, so relative paths are fine here. Distiller itself runs from its
+install directory, and a relative path handed to it directly fails within a
+second with exit `0xE0434352`. The same code with absolute paths means another
+Distiller instance is already running; the script stops and says so.
+
+The defaults are `Carbamidomethyl (C)` fixed and `Oxidation (M)` variable.
+Any `--fixed-mod` or `--var-mod` replaces the matching default (repeat the
+flag for several). Pass `--no-fixed-mods` or `--no-var-mods` to run with none,
+e.g. on unalkylated samples.
+
+Each run writes `<out>_seed.log` and one `<out>_attemptN.log` per
+fragment-tolerance attempt, so the log of a crashed attempt survives the retry.
 
 Patch only, without running:
 
