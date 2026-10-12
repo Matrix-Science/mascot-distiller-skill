@@ -64,13 +64,13 @@ grep -nE "C:\\\\Users\\\\[a-z]+|/Users/[a-z]+" "<name>.py"
 # Should return nothing. Use props_csv values, not hard-coded paths.
 ```
 
-### 7. `grouping=""` in the XML root element
+### 7. `grouping="Custom"` in the XML root element
 
 ```bash
 grep -E 'grouping="[^"]*"' "<name>.py.xml"
-# Want: grouping=""
-# Bad:  grouping="Custom"  — nests the report in Custom/Custom/ and on some
-#       Distiller builds hides it entirely. See SKILL.md gotcha #12.
+# Want: grouping="Custom" (or a sub-folder such as "Custom/Intensity")
+# Avoid: grouping=""  is for the shipped reports in reports/ and puts a custom
+#        report at the top level among them. See SKILL.md gotcha #12.
 ```
 
 ### 8. `mapsTo="AnalysisInputs"` parameters use one of the five magic names
@@ -137,7 +137,7 @@ file "$F.py" | grep -q "UTF-8\|ASCII" || echo "FAIL: encoding"
 test -f "$F.py.xml"                   || echo "FAIL: xml missing"
 python -m py_compile "$F.py" 2>&1 | grep -v "^$" && echo "FAIL: parse"
 grep -q "setColsToOutput(1)" "$F.py"  || echo "FAIL: logger GC"
-grep -q 'grouping=""' "$F.py.xml"     || echo "FAIL: grouping should be empty string"
+grep -qE 'grouping="Custom(/[^"]*)?"' "$F.py.xml" || echo "WARN: grouping should be \"Custom\" for a custom report (see gotcha #12)"
 if grep -q 'mapsTo="AnalysisInputs"' "$F.py.xml"; then
     grep -qE 'name="(signifThreshold|filterSignif|maxRatio|useProtein|excludeDatabase)"[^>]*mapsTo="AnalysisInputs"' "$F.py.xml" \
         || echo "FAIL: mapsTo=AnalysisInputs with non-magic parameter name (see gotcha #13)"

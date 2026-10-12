@@ -42,7 +42,7 @@ This skill uses two machine-specific paths that must be resolved before doing an
 See [First-time setup](#first-time-setup) for how to resolve these.
 
 **Key subdirectories under `<WORKSPACE>`** (relative paths):
-- `reports/` - Reference reports and shared helper modules (read-only)
+- `reports/` - **Shipped Matrix Science reports and helper modules. Read-only: never edit, rename, reformat or "fix" anything in here**, even if it looks inconsistent with this skill. Read them for reference; put all new and custom work in `dev-reports/`.
 - `dev-reports/` - Development workspace for custom reports
 - `dev-reports/templates/` - Starter templates
 - `scripts/` - Deployment and testing PowerShell scripts
@@ -281,7 +281,7 @@ if __name__ == "__main__":
 ### Key XML attributes
 
 - `title` - Report name displayed in Distiller GUI
-- `grouping` - Menu folder path (e.g. `"Custom"`, `"Custom/Intensity"`)
+- `grouping` - Menu folder the report appears in. Custom reports use `"Custom"` (a **Custom** folder under the main report list) or a sub-folder such as `"Custom/Intensity"`. `""` is for the shipped reports in `reports/`, which sit at the top level of the list. See gotcha #12.
 
 ### Supported quantitation protocols
 
@@ -885,11 +885,15 @@ file_summary = msparser.ms_peptidesummary(sub_res, res_params)
 # ONLY pass local query numbers to file_summary.getPeptide()
 ```
 
-### 12. `grouping=""` in the root `<DistillerReport>` element
+### 12. `grouping="Custom"` for custom reports; `""` is for shipped reports
 
-Every report in the reference `reports/` directory (`top-3`, `proteins_ibaq`, `table-peptides-int-all`, `anova`, ...) sets `grouping=""`. Distiller files empty-grouping reports under **Analysis → Reports → Custom** automatically.
+`grouping` names the folder the report appears in, under the main report list:
 
-Setting `grouping="Custom"` — even though it looks correct and matches the skill's old template — creates a nested **Custom/Custom/** sub-folder that buries the report, and on some Distiller builds makes it not appear in the menu at all. XML schema validation catches neither case. Always use `grouping=""` unless you deliberately want a sub-folder, in which case use `grouping="Custom/Something"`.
+- `grouping="Custom"` puts the report in a **Custom** folder under the main list. This is what you want for a custom report. It does **not** create a nested `Custom/Custom` folder.
+- `grouping="Custom/Intensity"` (or any `/`-separated path) creates a sub-folder.
+- `grouping=""` puts the report at the top level of the list, alongside the shipped reports.
+
+The reports in `reports/` (`top-3`, `proteins_ibaq`, `table-peptides-int-all`, `anova`, ...) use `grouping=""` because they **are** the shipped Matrix Science reports. They are not custom reports, so don't copy their `grouping` value into a new report. Don't change theirs to `"Custom"` either: everything in `reports/` is read-only.
 
 ### 13. `mapsTo="AnalysisInputs"` slot is bound by parameter name, not XML order
 

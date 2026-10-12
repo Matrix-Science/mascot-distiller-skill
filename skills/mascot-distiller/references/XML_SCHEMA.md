@@ -10,7 +10,7 @@ Complete reference for `distiller_report_definition_1.xsd` - the XML schema for 
     majorVersion="1"
     minorVersion="0"
     title="Report Display Name"
-    grouping=""
+    grouping="Custom"
     xmlns="http://www.matrixscience.com/xmlns/schema/distiller_report_definition_1"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.matrixscience.com/xmlns/schema/distiller_quantitation_2
@@ -24,7 +24,7 @@ Complete reference for `distiller_report_definition_1.xsd` - the XML schema for 
 | `majorVersion` | Yes | Schema major version (always `"1"`) |
 | `minorVersion` | Yes | Schema minor version (always `"0"`) |
 | `title` | Yes | Report name in Distiller GUI |
-| `grouping` | Yes | Menu folder path. **Convention: always use `""` (empty string)** — Distiller files empty-grouping reports under **Analysis → Reports → Custom** automatically. All reports in the reference `reports/` directory (top-3, proteins_ibaq, table-peptides-int-all, etc.) use `grouping=""`. Setting `grouping="Custom"` creates a nested `Custom/` folder *inside* Custom (i.e. the report gets buried) and can cause it to not appear at all on some Distiller builds. Use nested paths like `"Custom/Intensity"` only when you deliberately want a sub-folder. |
+| `grouping` | Yes | Menu folder the report appears in, under the main report list. **Custom reports: use `"Custom"`**, which puts the report in a Custom folder (no nested `Custom/Custom`), or a sub-path like `"Custom/Intensity"`. `""` puts the report at the top level. That is what the shipped reports in `reports/` (top-3, proteins_ibaq, etc.) use, so don't copy it from them. See SKILL.md gotcha #12. |
 
 ---
 

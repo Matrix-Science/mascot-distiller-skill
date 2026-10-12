@@ -1,6 +1,6 @@
 # Mascot Distiller Skill
 
-**Version:** 1.1.0 &nbsp;|&nbsp; **License:** Apache-2.0
+**Version:** 1.1.1 &nbsp;|&nbsp; **License:** Apache-2.0
 
 An Agent Skill that teaches AI coding assistants how to build **custom Mascot Distiller reports** — Python scripts that Distiller runs after a search to produce quantitative proteomics output (CSV, HTML, SVG, PNG).
 

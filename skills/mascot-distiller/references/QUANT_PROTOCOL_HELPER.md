@@ -210,6 +210,6 @@ for match_or_key in iter_match_components(quant, protein, is_ms1):
 
 Keeping these three branches inside the helper lets the report's main loop be a single pass over `proteins × components` without the per-protocol special-casing.
 
-## If/when to promote this into `reports/`
+## If/when to share this between reports
 
-If two or more custom reports adopt this pattern, lift it into `<WORKSPACE>/reports/QuantProtocol.py` and import from there. Distiller picks up any new module in `reports/` at next launch — same deployment story as the existing helpers (`LoadQuantitation`, `WriteReports`, `CreateQuantDataFrames`).
+If two or more custom reports adopt this pattern, move it into a shared module of your own, e.g. `<WORKSPACE>/dev-reports/_shared/QuantProtocol.py`. Deploy it next to your reports so they can import it. Don't put it in `<WORKSPACE>/reports/`, and don't edit the shipped helpers (`LoadQuantitation`, `WriteReports`, `CreateQuantDataFrames`). `reports/` holds the shipped Matrix Science reports and is read-only.

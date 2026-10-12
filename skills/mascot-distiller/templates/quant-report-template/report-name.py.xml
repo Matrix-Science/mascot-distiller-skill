@@ -2,7 +2,7 @@
 <DistillerReport
     majorVersion="1" minorVersion="0"
     title="REPORT TITLE HERE"
-    grouping=""
+    grouping="Custom"
     xmlns="http://www.matrixscience.com/xmlns/schema/distiller_report_definition_1"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.matrixscience.com/xmlns/schema/distiller_quantitation_2

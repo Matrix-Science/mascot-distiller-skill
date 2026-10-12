@@ -94,11 +94,11 @@ else
 fi
 rm -f /tmp/lint-err
 
-# 7. grouping="" in XML root (not "Custom" — see gotcha #12)
-if grep -qE 'grouping="Custom"' "$XML"; then
-    fail 'grouping="Custom" in XML root — use grouping="" (see SKILL.md gotcha #12)'
+# 7. grouping="Custom" (or "Custom/...") in XML root; "" is for shipped reports (see gotcha #12)
+if grep -qE 'grouping="Custom(/[^"]*)?"' "$XML"; then
+    pass 'grouping is "Custom" (report will appear in the Custom folder)'
 elif grep -qE 'grouping=""' "$XML"; then
-    pass 'grouping is empty (report will appear under Analysis → Reports → Custom)'
+    warn 'grouping="" puts the report at the top level with the shipped reports; use grouping="Custom" (see SKILL.md gotcha #12)'
 else
     warn "grouping attribute not found or has unusual value — double-check SKILL.md gotcha #12"
 fi
