@@ -1,7 +1,7 @@
 # De novo sequencing with Mascot Distiller
 
 Distiller can sequence a spectrum without a database. From the GUI it is
-**Analysis → De novo**; unattended it is `MascotDistiller.exe /batch /denovo`.
+**Analysis → De novo**; unattended it is `MascotDistiller.exe -batch -denovo`.
 This page covers the unattended path, because that is where the parameters go
 somewhere non-obvious and a silent-wrong-answer failure mode lives.
 
@@ -32,7 +32,7 @@ Three consequences, each of which looks like something else when you hit it:
 | What you'd expect | What actually happens |
 |---|---|
 | Edit `Distiller.rst` (live preferences) between runs | No effect. The project snapshotted its own copy when it was created. |
-| Pass `/s <preferences>` — it's a documented switch | Accepted and ignored for de novo. A deliberately **malformed** preferences file still produces normal output, which is how you can prove it isn't being read. |
+| Pass `-s <preferences>` — it's a documented switch | Accepted and ignored for de novo. A deliberately **malformed** preferences file still produces normal output, which is how you can prove it isn't being read. |
 | Set new parameters, re-run, read the output header | The header shows your new tolerances **and the solutions are the old ones**, re-exported from cache. See [failure modes](#failure-modes). |
 
 So to change de novo parameters you patch `rover_data` inside the `.rov`.
@@ -49,20 +49,24 @@ own directory.
 
 | Switch | Meaning |
 |---|---|
-| `/batch` | No GUI. Required for unattended use. |
-| `/denovo <mode>` | `0` = every spectrum in the project, `1` = a scan range. |
-| `/denovo_start_scan <n>` / `/denovo_end_scan <n>` | Range bounds, used when `/denovo 1`. **Raw scan numbers**, not peak-list indices. |
-| `/denovoout <path.csv>` | Where to write the solutions CSV. |
-| `/outputProgress` | Emit progress lines to the log — worth having on a multi-hour run. |
-| `/e <path.txt>` | Error/status file. Written even on success (often empty). |
-| `/logfile <path>` / `/loglevel <mask>` | Log destination and verbosity. `loglevel` is a bitmask (`1` Error + `2` Warning + `4` Information …); `3` (Error + Warning) is a useful default, `7` adds progress-level Information. See [LOGGING.md](LOGGING.md). |
+| `-batch` | No GUI. Required for unattended use. |
+| `-denovo <mode>` | `0` = every spectrum in the project, `1` = a scan range. |
+| `-denovo_start_scan <n>` / `-denovo_end_scan <n>` | Range bounds, used when `-denovo 1`. **Raw scan numbers**, not peak-list indices. |
+| `-denovoout <path.csv>` | Where to write the solutions CSV. |
+| `-outputProgress` | Emit progress lines to the log — worth having on a multi-hour run. |
+| `-e <path.txt>` | Error/status file. Written even on success (often empty). |
+| `-logfile <path>` / `-loglevel <mask>` | Log destination and verbosity. `loglevel` is a bitmask (`1` Error + `2` Warning + `4` Information …); `3` (Error + Warning) is a useful default, `7` adds progress-level Information. See [LOGGING.md](LOGGING.md). |
 | `<project.rov>` | The project, given last as a positional argument. |
 
 ```powershell
 & "$env:PROGRAMFILES\Matrix Science\Mascot Distiller\MascotDistiller.exe" `
-    /batch /denovo 0 /denovoout out.csv /outputProgress `
-    /e status.txt /logfile denovo.log /loglevel 3 project.rov
+    -batch -denovo 0 -denovoout C:\work\out.csv -outputProgress `
+    -e C:\work\status.txt -logfile C:\work\denovo.log -loglevel 3 C:\work\project.rov
 ```
+
+Use absolute paths: Distiller runs from its install directory, so a relative
+path resolves there and the run fails within a second (see
+[COMMAND_LINE.md](COMMAND_LINE.md#invocation)).
 
 Exit code `0` means the run completed. **`3221225477` (0xC0000005) is an access
 violation** — the engine crashed; see [failure modes](#failure-modes).
@@ -76,10 +80,10 @@ it the first time it does de novo work. So a first-run patch has nothing to
 patch. The sequence that works:
 
 ```
-1. SEED   /denovo 1 over a short scan window   → makes Distiller create rover_data
+1. SEED   -denovo 1 over a short scan window   → makes Distiller create rover_data
 2. PATCH  rewrite <denovotagTab> in rover_data → sets the real parameters
           + delete cached rover_data+N members → forces recomputation
-3. RUN    /denovo 0 over the whole project     → the run you actually wanted
+3. RUN    -denovo 0 over the whole project     → the run you actually wanted
 ```
 
 **Seed over a window of scans, not one.** If the single seeded spectrum yields
@@ -333,7 +337,7 @@ Practical consequences for a report:
 
 Once a project has de novo results, Distiller caches them in ZIP members named
 `rover_data+N`, referenced from the project XML by `<DenovoResult Segment="N"/>`.
-A later `/denovo` run **re-exports the cache instead of recomputing** — and the
+A later `-denovo` run **re-exports the cache instead of recomputing** — and the
 exported header reflects your *new* parameters. Exit code 0, plausible file, right
 header, wrong solutions.
 
@@ -390,7 +394,7 @@ can't leave partial state behind.
 ### 5. Distiller holds the project open
 
 While a de novo run is in flight the `.rov` is locked. Anything else that needs
-the same project — a Mascot submission via `/submitSearch`, a report — has to
+the same project — a Mascot submission via `-submitSearch`, a report — has to
 wait or use a different route. See [COMMAND_LINE.md](COMMAND_LINE.md).
 
 ---

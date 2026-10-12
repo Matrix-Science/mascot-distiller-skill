@@ -276,13 +276,15 @@ Recommended workflow (Distiller help, *Multi-file Quantitation*):
    - Distiller Workstation: *File → New multi-file project*, select the `.rov`s
      from the cache folder, then *Process and Search* and *Quantitate All*
      (fast — peak picking and per-file search are already done), **or**
-   - Command line (2.9.240+): `MascotDistiller.exe new_master.rov -batch
-     -multifileDirectory "<Daemon cache dir>" -quantitate` — documented as
-     "designed to be used on the cache directory from a Mascot Daemon task".
-     **Not verified here.** Note that `-rawFile` fails because the
-     executable opens `<project.rov>` before handling other switches, so a
-     missing project can fail the same way. Test this on a small task before you
-     rely on it, **or**
+   - Command line (2.9.240+): `MascotDistiller.exe -batch
+     -multifileDirectory "<Daemon cache dir>" -quantitate "" -quantout <abs.xml>
+     -completeReport 1 -exportTimeAlignment 1 <abs new_master.rov>`.
+     Verified on 2.9.242.16 with 8-run masters. The directory can also be a
+     folder of CLI-made `.rov` files, or a staging folder of hard links to
+     `.rov` + `.mgf` pairs taken from more than one task cache. The build
+     rewrites the sub-project `.rov` files, so hard-linked copies change too.
+     Project path last, absolute paths; see
+     [COMMAND_LINE.md](COMMAND_LINE.md#headless-reports--quantreport), **or**
    - Daemon 3.0+ **Quantitation Summary** with a sample map.
 3. Run your report against the **master** `.rov`.
 
@@ -301,6 +303,8 @@ Merging is for identification depth, not label-free quantitation.
 | Symptom | Cause |
 |---------|-------|
 | Search fine, no quant in `.rov` | `QUANTITATION=None`/missing in the parameter set, or save project = `0`, or quantitate = `-1` |
+| Task pauses with `MDS1194 Conversion from string "" to type 'Boolean'` | A TaskDB column (e.g. `quantitation`) was set to `''` by SQL. "Not set" means SQL `NULL`, never an empty string |
+| DIA files give a fraction of the expected queries (e.g. 76k instead of 334k) | The task's import filter is `Mascot Distiller`, not `Mascot Distiller (DIA)`. A `.dia.opt` file alone does not switch to DIA peak picking. Check the filter on any DIA task an API created, since some tools always set the plain filter |
 | Quant fails, MGF absent | Peak list format set to mzData/Comprehensive (field 9 ≠ 0) |
 | Replicate method, no ratios | Daemon can't do replicate per file; build a multi-file project (§5) |
 | Merged task has no project link | Expected: merged searches have no per-file project hyperlink |

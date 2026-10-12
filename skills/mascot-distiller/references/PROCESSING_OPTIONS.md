@@ -83,6 +83,23 @@ default `<collapseMSn>false</collapseMSn>` and clone the
 `<peakSelectionOptions>` block once with `level="1"` and once with
 `level="2"`.
 
+## Choosing a preset
+
+The presets live in
+`C:\ProgramData\Matrix Science\Mascot Distiller\processing options\`. Pass one
+with `-optFile` whenever you create a project from the command line (see
+[COMMAND_LINE.md](COMMAND_LINE.md#creating-a-rov-headlessly)). Engine defaults are
+not the GUI defaults, so leaving it out gives you different peak lists.
+
+Settings that have caught past sessions out:
+
+| Setting | Watch for |
+|---|---|
+| `<precursorDefaultCharges>` | `2 3` in the stock DDA presets (`2 3 4 5` in the DIA ones), so a spectrum with no determined charge goes out once per charge. For **MALDI** data, which is singly charged, set it to `1`; otherwise every spectrum is searched at 2+ and 3+. Only the Axima, Data Explorer and `m@ldi` presets already use `1`; `default.BrukerXmass.opt` does not. |
+| `<maxPeakCharge>` | `TD.ThermoXcalibur.opt` (top-down) allows up to 10 for MS/MS, against 2 in `extract_msn`. Peak detection then takes minutes per file instead of under a second. |
+| `<summingType>` | The only difference between `TD.sum` and `TD`: `1` sums MS/MS scans that share a precursor, `0` doesn't. |
+| `extract_msn` | Does no precursor charge determination of its own. |
+
 ## Line endings
 
 `Distiller` itself writes `*.opt` files with CRLF. Some files in the

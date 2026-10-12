@@ -26,7 +26,7 @@ Usage:
         --manifest project_manifest.csv
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 import argparse
 import csv
@@ -43,6 +43,7 @@ DENOVO_ALL = "0"
 DENOVO_RANGE = "1"
 
 ACCESS_VIOLATION = 3221225477      # 0xC0000005
+DOTNET_EXCEPTION = 3762504530      # 0xE0434352
 
 
 def find_distiller() -> Path:
@@ -140,7 +141,24 @@ def main():
                          "need Phospho (ST) and Phospho (Y) adding here or de "
                          "novo cannot place the modification at all. Do not "
                          "add mods speculatively -- each one costs accuracy.")
+    ap.add_argument("--no-fixed-mods", action="store_true",
+                    help="clear the fixed mods (overrides the default and any "
+                         "--fixed-mod)")
+    ap.add_argument("--no-var-mods", action="store_true",
+                    help="clear the variable mods (overrides the default and "
+                         "any --var-mod)")
     args = ap.parse_args()
+    if args.no_fixed_mods:
+        args.fixed_mod = []
+    if args.no_var_mods:
+        args.var_mod = []
+    # Distiller runs with cwd set to its install directory, so a relative path
+    # would resolve there and the run dies in ~1s with 0xE0434352. Resolve
+    # against the caller's cwd before anything is handed to Distiller.
+    args.rov = args.rov.resolve()
+    args.out = args.out.resolve()
+    if args.manifest:
+        args.manifest = args.manifest.resolve()
 
     install = find_distiller()
     if not args.rov.exists():
@@ -148,9 +166,10 @@ def main():
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
     status = args.out.with_name(args.out.stem + "_status.txt")
-    log = args.out.with_name(args.out.stem + ".log")
+    log = args.out.with_name(args.out.stem + "_seed.log")
     seed_out = args.out.with_name(args.out.stem + "_seed.csv")
-    for stale in (args.out, status, log, seed_out):
+    for stale in (args.out, status, log, seed_out,
+                  *args.out.parent.glob(args.out.stem + "_attempt*.log")):
         stale.unlink(missing_ok=True)
 
     if args.seed_start and args.seed_end:
@@ -163,12 +182,12 @@ def main():
     # 1. Seed: smallest useful de novo run, purely to make Distiller
     #    materialise the rover_data member we need to patch.
     print(f"[1/3] seeding project (scans {lo}-{hi})")
-    distiller(install, ["/batch", "/denovo", DENOVO_RANGE,
-                        "/denovo_start_scan", str(lo),
-                        "/denovo_end_scan", str(hi),
-                        "/denovoout", str(seed_out),
-                        "/e", str(status), "/logfile", str(log),
-                        "/loglevel", "3", str(args.rov)], "seed")
+    distiller(install, ["-batch", "-denovo", DENOVO_RANGE,
+                        "-denovo_start_scan", str(lo),
+                        "-denovo_end_scan", str(hi),
+                        "-denovoout", str(seed_out),
+                        "-e", str(status), "-logfile", str(log),
+                        "-loglevel", "3", str(args.rov)], "seed")
 
     # 2 & 3. Patch parameters, then run -- retrying at a looser fragment
     # tolerance if the engine dies.
@@ -203,16 +222,25 @@ def main():
 
         print("[3/3] de novo sequencing all spectra")
         args.out.unlink(missing_ok=True)
-        rc = distiller(install, ["/batch", "/denovo", DENOVO_ALL,
-                                 "/denovoout", str(args.out),
-                                 "/outputProgress",
-                                 "/e", str(status), "/logfile", str(log),
-                                 "/loglevel", "3", str(args.rov)], "denovo")
+        status.unlink(missing_ok=True)   # -e must name a new file
+        # One log per attempt, so a crash at a tight tolerance stays readable
+        # after the retry at a looser one.
+        log = args.out.with_name(f"{args.out.stem}_attempt{i}.log")
+        rc = distiller(install, ["-batch", "-denovo", DENOVO_ALL,
+                                 "-denovoout", str(args.out),
+                                 "-outputProgress",
+                                 "-e", str(status), "-logfile", str(log),
+                                 "-loglevel", "3", str(args.rov)], "denovo")
         if rc == 0 and args.out.exists():
             used_tol = tol
             break
         print(f"  failed at {tol} Da (exit {rc})"
               + (" -- access violation" if rc == ACCESS_VIOLATION else ""))
+        if rc == DOTNET_EXCEPTION:
+            # Paths are already absolute, so the other known cause applies.
+            sys.exit("Distiller failed at start-up (0xE0434352). Is another "
+                     "MascotDistiller / DistillerGUIApplication instance "
+                     "running? Close it and rerun.")
 
     if used_tol is not None and used_tol != args.frag_tol:
         print(f"  NOTE: fell back to {used_tol} Da fragment tolerance")

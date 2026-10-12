@@ -21,8 +21,8 @@ Inside the ZIP you'll typically see:
 |---|---|---|
 | `mdro_proc_opts` | XML | Distiller peak detection options. Same schema as the `*.opt` files documented in [PROCESSING_OPTIONS.md](PROCESSING_OPTIONS.md) — `<processingOptions xmlns="http://www.matrixscience.com/xmlns/schema/mdro_proc_opts_1">`. Not exposed via msparser; parse the XML directly. |
 | `mdro_search_status` | XML (small) | Search task manifest — `taskId`, search title, Mascot server URL, results-file path, submit time, status message. Useful as a quick "what did this project search?" probe. |
-| `mdro_search_status+N` (N>=1) | binary | The actual Mascot **`.dat` results file** in MIME multipart format. Use msparser's `ms_mascotresfilebase.createResfile()` to read it. |
-| `mdro_pkl` | binary | Peak list (typically the largest stream by far). |
+| `mdro_search_status+N` (N>=1) | binary | The embedded Mascot **results file**: a MIME multipart `.dat` from older Mascot, or a **SQLite `.msr`** from Mascot 3.x. Sniff the first 16 bytes (`SQLite format 3\0`) before choosing a reader. **Can be absent**: some Daemon cache `.rov` files hold only the manifest, so follow its `<resultsFile>` to the server copy. |
+| `mdro_pkl` | XML | Peak lists: a `peakListArchive` (`mdro_pkl_archive_2`) whose m/z, area and charge arrays are base64 little-endian doubles. Size scales with the number of spectra. Decoder in [COMMAND_LINE.md](COMMAND_LINE.md#peak-lists-for-third-party-tools). |
 | `mdro_project_<UUID>` | XML | Project metadata: Distiller version (`mdroVersion`), experiment type, the full stream list. |
 | `rover_data` | XML | Distiller's main project XML (`<distillerProject>`). Carries the URL-encoded quantitation method, a snapshot of the relevant `mascot.dat` databases section, and the project's own copy of `<denovotagTab>` — the de novo parameters. **Absent from a freshly created project**; Distiller writes it the first time it does de novo work. |
 | `rover_data+N` (N>=1) | binary | Segment payloads, including **cached de novo solutions**, referenced from `rover_data` by `<DenovoResult Segment="N" />`. See [the caching trap](#the-de-novo-caching-trap). |
@@ -58,7 +58,9 @@ def open_rov_resfile(rov_path):
         if not candidates:
             return None, None
         tempdir = tempfile.mkdtemp(prefix="rov_")
-        out = os.path.join(tempdir, "results.dat")
+        with z.open(candidates[0]) as src:
+            is_msr = src.read(16) == b"SQLite format 3\x00"
+        out = os.path.join(tempdir, "results.msr" if is_msr else "results.dat")
         with z.open(candidates[0]) as src, open(out, "wb") as dst:
             while chunk := src.read(1 << 20):
                 dst.write(chunk)
@@ -169,7 +171,7 @@ a ready-made patcher: [DE_NOVO.md](DE_NOVO.md).
 ### The de novo caching trap
 
 Once a project has de novo results, they live in `rover_data+N` members
-referenced by `<DenovoResult Segment="N" />`. A later `/denovo` run
+referenced by `<DenovoResult Segment="N" />`. A later `-denovo` run
 **re-exports the cache instead of recomputing** — and the exported header shows
 the *new* parameters over the *old* solutions. Exit code 0, plausible file,
 wrong answers. Any code that rewrites `<denovotagTab>` must also strip those
@@ -200,8 +202,22 @@ the `mascot.dat` databases snapshot.
    on Windows — msparser holds the file handle, and `rmtree` will fail
    with a permission error if the resfile is still alive.
 3. **`mdro_search_status` (no suffix) is the small XML manifest, not
-   the `.dat`.** The `.dat` lives in `mdro_search_status+N` for `N>=1`.
-   The bare-name stream contains only the search-task pointer.
+   the results.** The results live in `mdro_search_status+N` for `N>=1`.
+   The bare-name stream contains only the search-task pointer, including
+   `<resultsFile>` (e.g. `../data/20251015/F001253.msr`), which is where to
+   go when there is no `+N` stream.
+   With Mascot 3.x the embedded file is SQLite. To check what was searched
+   without msparser, read its tables directly:
+
+   ```python
+   import sqlite3
+   c = sqlite3.connect(f"file:{msr_path}?mode=ro", uri=True)
+   params = dict(c.execute("select key, value from search__parameters"))
+   dbs = c.execute("select * from search__databases").fetchall()
+   ```
+
+   Do this after the first file of any `-submitSearch` batch: a `.par` with
+   two `DB=` lines silently searches only the last one.
 4. **A valid ZIP of the right size can still be an unusable project.** One left
    half-written by a hard kill opens cleanly but can be missing
    `mdro_proc_opts`, and Distiller then silently does no work on it. Check
